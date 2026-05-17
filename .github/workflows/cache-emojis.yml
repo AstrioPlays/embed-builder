@@ -1,0 +1,36 @@
+name: Cache emoji.gg
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # runs daily at 3 AM UTC
+  workflow_dispatch:       # lets you trigger it manually from the Actions tab
+
+jobs:
+  fetch-emojis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch emoji.gg API
+        run: |
+          curl -fsSL "https://emoji.gg/api/" \
+            -H "User-Agent: Mozilla/5.0" \
+            -o emojis.json
+          echo "Fetched $(jq length emojis.json) emojis"
+          curl -fsSL "https://emoji.gg/api?request=categories" \
+            -H "User-Agent: Mozilla/5.0" \
+            -o categories.json
+          echo "Fetched $(jq length categories.json) categories"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add emojis.json
+          git diff --staged --quiet || git commit -m "chore: update emojis cache [skip ci]"
+          git push
+
